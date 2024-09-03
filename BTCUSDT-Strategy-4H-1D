@@ -1,0 +1,253 @@
+//@version=5
+strategy("BTC 4H-1D Strategy", shorttitle="BTC 4H-1D Strategy", format=format.price, precision=5, overlay=false,default_qty_type = strategy.cash,initial_capital = 100)//,default_qty_type = strategy.percent_of_equity,default_qty_value = 100
+import TradingView/ta/7
+
+// Function to calculate last down and up fractal values
+getLastFractalValues(n) =>
+    bool upflagDownFrontier = true
+    bool upflagUpFrontier0 = true
+    bool upflagUpFrontier1 = true
+    bool upflagUpFrontier2 = true
+    bool upflagUpFrontier3 = true
+    bool upflagUpFrontier4 = true
+    bool downflagDownFrontier = true
+    bool downflagUpFrontier0 = true
+    bool downflagUpFrontier1 = true
+    bool downflagUpFrontier2 = true
+    bool downflagUpFrontier3 = true
+    bool downflagUpFrontier4 = true
+
+    // UpFractal conditions
+    for i = 1 to n
+        upflagDownFrontier := upflagDownFrontier and (high[n-i] < high[n])
+        upflagUpFrontier0 := upflagUpFrontier0 and (high[n+i] < high[n])
+        upflagUpFrontier1 := upflagUpFrontier1 and (high[n+1] <= high[n] and high[n+i + 1] < high[n])
+        upflagUpFrontier2 := upflagUpFrontier2 and (high[n+1] <= high[n] and high[n+2] <= high[n] and high[n+i + 2] < high[n])
+        upflagUpFrontier3 := upflagUpFrontier3 and (high[n+1] <= high[n] and high[n+2] <= high[n] and high[n+3] <= high[n] and high[n+i + 3] < high[n])
+        upflagUpFrontier4 := upflagUpFrontier4 and (high[n+1] <= high[n] and high[n+2] <= high[n] and high[n+3] <= high[n] and high[n+4] <= high[n] and high[n+i + 4] < high[n])
+
+    flagUpFrontier = upflagUpFrontier0 or upflagUpFrontier1 or upflagUpFrontier2 or upflagUpFrontier3 or upflagUpFrontier4
+    upFractal = (upflagDownFrontier and flagUpFrontier)
+
+    // DownFractal conditions
+    for i = 1 to n
+        downflagDownFrontier := downflagDownFrontier and (low[n-i] > low[n])
+        downflagUpFrontier0 := downflagUpFrontier0 and (low[n+i] > low[n])
+        downflagUpFrontier1 := downflagUpFrontier1 and (low[n+1] >= low[n] and low[n+i + 1] > low[n])
+        downflagUpFrontier2 := downflagUpFrontier2 and (low[n+1] >= low[n] and low[n+2] >= low[n] and low[n+i + 2] > low[n])
+        downflagUpFrontier3 := downflagUpFrontier3 and (low[n+1] >= low[n] and low[n+2] >= low[n] and low[n+3] >= low[n] and low[n+i + 3] > low[n])
+        downflagUpFrontier4 := downflagUpFrontier4 and (low[n+1] >= low[n] and low[n+2] >= low[n] and low[n+3] >= low[n] and low[n+4] >= low[n] and low[n+i + 4] > low[n])
+
+    flagDownFrontier = downflagUpFrontier0 or downflagUpFrontier1 or downflagUpFrontier2 or downflagUpFrontier3 or downflagUpFrontier4
+    downFractal = (downflagDownFrontier and flagDownFrontier)
+
+    // Store last values if conditions met
+    var float last_down_value = na
+    var float last_up_value = na
+
+    if downFractal
+        last_down_value := close[n]
+    if upFractal
+        last_up_value := close[n]
+
+    [last_down_value, last_up_value]//[upFractal,downFractal]//
+
+std = ta.stdev(close,14)
+[macdLine, signalLine, histLine] = ta.macd(std, 120, 260, 90)
+
+l1=input(11,'pivot length 1')
+l2=input(21,'pivot length 2')
+l3=input(31,'pivot length 3')
+l4=input(41,'pivot length 4')
+l5=input(51,'pivot length 6')
+l6=input(61,'pivot length 7')
+
+[upFractal1,downFractal1] = getLastFractalValues(l1)
+[upFractal2,downFractal2] = getLastFractalValues(l2)
+[upFractal3,downFractal3] = getLastFractalValues(l3)
+[upFractal4,downFractal4] = getLastFractalValues(l4)
+[upFractal5,downFractal5] = getLastFractalValues(l5)
+[upFractal6,downFractal6] = getLastFractalValues(l6)
+
+
+upval = close*6-(upFractal1[1]+upFractal2[1]+upFractal3[1]+upFractal4[1]+upFractal5[1]+upFractal6[1])
+downval = (downFractal1[1]+downFractal2[1]+downFractal3[1]+downFractal4[1]+downFractal5[1]+downFractal6[1])-close*6
+
+
+PI   = 104348/33215
+
+BULL = 1
+BEAR = -1
+NONE = 0
+
+   
+maCond(_ma, _maRef) =>
+    diffMA = ta.change(_ma)
+    macol = diffMA>=0 and _ma>_maRef ? true : diffMA<0 and _ma>_maRef ? false : diffMA<=0 and _ma<_maRef ? false : diffMA>=0 and _ma<_maRef ? true : false
+    macol
+
+
+
+i_exp = true
+
+
+src = close
+
+ma05  = i_exp ? ta.ema(src, 05) : ta.sma(src, 05)
+ma10  = i_exp ? ta.ema(src, 10) : ta.sma(src, 10)
+ma15  = i_exp ? ta.ema(src, 15) : ta.sma(src, 15)
+ma20  = i_exp ? ta.ema(src, 20) : ta.sma(src, 20)
+ma25  = i_exp ? ta.ema(src, 25) : ta.sma(src, 25)
+ma30  = i_exp ? ta.ema(src, 30) : ta.sma(src, 30)
+ma35  = i_exp ? ta.ema(src, 35) : ta.sma(src, 35)
+ma40  = i_exp ? ta.ema(src, 40) : ta.sma(src, 40)
+ma45  = i_exp ? ta.ema(src, 45) : ta.sma(src, 45)
+ma50  = i_exp ? ta.ema(src, 50) : ta.sma(src, 50)
+ma55  = i_exp ? ta.ema(src, 55) : ta.sma(src, 55)
+ma60  = i_exp ? ta.ema(src, 60) : ta.sma(src, 60)
+ma65  = i_exp ? ta.ema(src, 65) : ta.sma(src, 65)
+ma70  = i_exp ? ta.ema(src, 70) : ta.sma(src, 70)
+ma75  = i_exp ? ta.ema(src, 75) : ta.sma(src, 75)
+ma80  = i_exp ? ta.ema(src, 80) : ta.sma(src, 80)
+ma85  = i_exp ? ta.ema(src, 85) : ta.sma(src, 85)
+ma90  = i_exp ? ta.ema(src, 90) : ta.sma(src, 90)
+ma100 = i_exp ? ta.ema(src, 100): ta.sma(src, 100)
+
+
+
+
+allCondsTrue = maCond(ma05, ma100) and maCond(ma10, ma100) and maCond(ma15, ma100) and maCond(ma20, ma100) and
+               maCond(ma25, ma100) and maCond(ma30, ma100) and maCond(ma35, ma100) and maCond(ma40, ma100) and
+               maCond(ma45, ma100) and maCond(ma50, ma100) and maCond(ma55, ma100) and maCond(ma60, ma100) and
+               maCond(ma65, ma100) and maCond(ma70, ma100) and maCond(ma75, ma100) and maCond(ma80, ma100) and
+               maCond(ma85, ma100) and maCond(ma90, ma100)
+allCondsFalse = not(maCond(ma05, ma100)) and not(maCond(ma10, ma100)) and not(maCond(ma15, ma100)) and not(maCond(ma20, ma100)) and
+               not(maCond(ma25, ma100)) and not(maCond(ma30, ma100)) and not(maCond(ma35, ma100)) and not(maCond(ma40, ma100)) and
+               not(maCond(ma45, ma100)) and not(maCond(ma50, ma100)) and not(maCond(ma55, ma100)) and not(maCond(ma60, ma100)) and
+               not(maCond(ma65, ma100)) and not(maCond(ma70, ma100)) and not(maCond(ma75, ma100)) and not(maCond(ma80, ma100)) and
+               not(maCond(ma85, ma100)) and not(maCond(ma90, ma100))
+
+crossValueL() =>
+    if ta.crossunder(close, ma05)
+        0.05
+    else if ta.crossunder(close, ma10)
+        0.10
+    else if ta.crossunder(close, ma15)
+        0.15
+    else if ta.crossunder(close, ma20)
+        0.20
+    else if ta.crossunder(close, ma25)
+        0.25
+    else if ta.crossunder(close, ma30)
+        0.30
+    else if ta.crossunder(close, ma35)
+        0.35
+    else if ta.crossunder(close, ma40)
+        0.40
+    else if ta.crossunder(close, ma45)
+        0.45
+    else if ta.crossunder(close, ma50)
+        0.50
+    else if ta.crossunder(close, ma55)
+        0.55
+    else if ta.crossunder(close, ma60)
+        0.60
+    else if ta.crossunder(close, ma65)
+        0.65
+    else if ta.crossunder(close, ma70)
+        0.70
+    else if ta.crossunder(close, ma75)
+        0.75
+    else if ta.crossunder(close, ma80)
+        0.80
+    else if ta.crossunder(close, ma85)
+        0.85
+    else if ta.crossunder(close, ma90)
+        0.90
+    else if ta.crossunder(close, ma100)
+        1.0
+    else
+        na
+anyCrossunder() =>
+    ta.crossunder(close, ma05) or ta.crossunder(close, ma10) or ta.crossunder(close, ma15) or ta.crossunder(close, ma20) or ta.crossunder(close, ma25) or ta.crossunder(close, ma30) or ta.crossunder(close, ma35) or ta.crossunder(close, ma40) or ta.crossunder(close, ma45) or ta.crossunder(close, ma50) or ta.crossunder(close, ma55) or ta.crossunder(close, ma60) or ta.crossunder(close, ma65) or ta.crossunder(close, ma70) or ta.crossunder(close, ma75) or ta.crossunder(close, ma80) or ta.crossunder(close, ma85) or ta.crossunder(close, ma90)
+
+crossValueS() =>
+    if ta.crossover(close, ma05)
+        0.05
+    else if ta.crossover(close, ma10)
+        0.10
+    else if ta.crossover(close, ma15)
+        0.15
+    else if ta.crossover(close, ma20)
+        0.20
+    else if ta.crossover(close, ma25)
+        0.25
+    else if ta.crossover(close, ma30)
+        0.30
+    else if ta.crossover(close, ma35)
+        0.35
+    else if ta.crossover(close, ma40)
+        0.40
+    else if ta.crossover(close, ma45)
+        0.45
+    else if ta.crossover(close, ma50)
+        0.50
+    else if ta.crossover(close, ma55)
+        0.55
+    else if ta.crossover(close, ma60)
+        0.60
+    else if ta.crossover(close, ma65)
+        0.65
+    else if ta.crossover(close, ma70)
+        0.70
+    else if ta.crossover(close, ma75)
+        0.75
+    else if ta.crossover(close, ma80)
+        0.80
+    else if ta.crossover(close, ma85)
+        0.85
+    else if ta.crossover(close, ma90)
+        0.90
+    else if ta.crossover(close, ma100)
+        1.0
+    else
+        na
+
+// Function to check any crossover
+anyCrossover() =>
+    ta.crossover(close, ma05) or ta.crossover(close, ma10) or ta.crossover(close, ma15) or ta.crossover(close, ma20) or ta.crossover(close, ma25) or ta.crossover(close, ma30) or ta.crossover(close, ma35) or ta.crossover(close, ma40) or ta.crossover(close, ma45) or ta.crossover(close, ma50) or ta.crossover(close, ma55) or ta.crossover(close, ma60) or ta.crossover(close, ma65) or ta.crossover(close, ma70) or ta.crossover(close, ma75) or ta.crossover(close, ma80) or ta.crossover(close, ma85) or ta.crossover(close, ma90)
+
+anycrossL = anyCrossunder()
+exitPL = crossValueL()
+anycrossS = anyCrossover()
+exitPS = crossValueS()
+var int lastOrderBar = na  // Variable to store the bar index of the last order
+
+plot(strategy.position_size*close/strategy.position_avg_price,color=strategy.position_size>0?color.green:color.black)
+
+if anycrossL and strategy.position_size>0 and not(bar_index==lastOrderBar)
+    strategy.close('long',qty_percent = exitPL*100,comment = 'stop')
+if  upval>downval and allCondsTrue and strategy.position_size==0 
+    strategy.entry('long',strategy.long,qty=100)
+    lastOrderBar:=bar_index
+if  upval<downval or allCondsFalse
+    strategy.close('long',comment = 'reversal',qty_percent = 100)
+if strategy.position_size<10 and strategy.position_size>0
+    strategy.close('long',comment='runup')
+
+
+
+
+// if anycrossS and strategy.position_size<0 and not(bar_index==lastOrderBar)
+//     strategy.close('short',qty_percent = exitPS*100,comment = 'stop')
+// if  upval<downval and allCondsFalse and strategy.position_size==0 
+//     strategy.entry('short',strategy.short,qty=100)
+//     lastOrderBar:=bar_index
+// if  upval>downval or allCondsTrue
+//     strategy.close('short',comment = 'reversal',qty_percent = 100)
+// if strategy.position_size>-10 and strategy.position_size<0
+//     strategy.close('short',comment='runup')
+
+
+
+
